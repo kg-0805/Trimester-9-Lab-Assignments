@@ -4,89 +4,93 @@
 #Assignment 2
 #Roll No. : PB-40
 
-class Variable:
-    def __init__(self,value):
-        self.value = value
-    def __eq__(self, other):
-        return self.value == other.value
-class Constant:
-    def __init__(self,value):
-        self.value = value
-    def __eq__(self, other):
-        return self.value == other.value
-class Rel:
-    def __init__(self,name,args):
-        #This is a list
-        self.name = name
-        self.value = str(self.name)+str([i.value for i in args])
-        self.args = args
+class SendMoreMoneyConstrain:
+    def __init__(self,letters):
+        self.letters = letters
 
-
-
-def Unify(L1,L2,testset):
-    '''
-    L1 and L2 are Rel types, variables or constants
-    '''
-    #If both are variable or constants
-    if(isinstance(L1,Variable) or isinstance(L2,Variable) or isinstance(L1,Constant) or isinstance(L2,Constant)):
-        if L1 == L2:
-            return None
-        elif isinstance(L1,Variable):
-            if isinstance(L2,Variable):
-                print("Both missmatching variables")
-                return False
-            else:
-                if L1.value not in testset.values():
-                    return [L2,L1]
-                else:
-                    print("Ambigious Variable")
-                    return False
-        elif isinstance(L2,Variable):
-            if isinstance(L1,Variable):
-                print("Both missmatching variables")
-                return False
-            else:
-                if L2.value not in testset.values():
-                    return [L1,L2]
-                else:
-                    print("Ambigious Variable")
-                    return False
-        else:
-            print("Missmatch")
+    def satisfied(self, assignment):
+        if len(set(assignment.values()))<len(assignment):
             return False
 
-    #Ensuring the functions are the same 
-    elif L1.name != L2.name:
-        print("Relation Missmatch")
-        return False
-    #Ensuring the functions have the same number of arguments
-    elif len(L1.args) != len(L2.args):
-        print("Arguements length missmatch")
-        return False
-    
-    SUBSET = {}
+        if len(assignment) == len(self.letters):
+            #Getting all the assignment values
+            s = assignment['S']
+            e = assignment['E']
+            n = assignment['N']
+            d = assignment['D']
+            m = assignment['M']
+            o = assignment['O']
+            r = assignment['R']
+            y = assignment['Y']
 
-    for i in range(len(L1.args)):
-        S = Unify(L1.args[i],L2.args[i],SUBSET)
-        if S==False:
-            return False
-        if S != None:
-            SUBSET[S[0].value] = S[1].value
+            #checking if the assignment is right
+            send = s * 1000 + e * 100 + n * 10 + d
+            more = m * 1000 + o * 100 + r * 10 + e
+            money = m * 10000 + o * 1000 + n*100 + e * 10 + y
 
-    return SUBSET
+            return send+more == money
+        return True
+
+class CSP():
+    def __init__(self,variables,domain):
+        self.variables = variables
+        self.domain = domain
+        self.constraints= {}
+
+        for var in self.variables:
+            self.constraints[var] = []
+            if var not in self.domain:
+                print("Domain Assignment Error")
+                raise LookupError("Domain Assignment Error")
+
+    def add_constraint(self,constraint):
+        for variable in constraint.letters:
+            if variable not in self.variables:
+                raise LookupError("Variable in constraint not in CSP")
+            else:
+                self.constraints[variable].append(constraint)
+
+    def consistent(self,variable,assignment):
+        '''To check all the constraints'''
+        for cons in self.constraints[variable]:
+            if not cons.satisfied(assignment):
+                return False
+        return True
+
+    def backtracking_search(self,assignment={}):
+        '''To run a backtracking algorithm with constraints'''
+        if len(assignment) == len(self.variables):
+            return assignment
+
+        unassigned = [v for v in self.variables if v not in assignment]
+        first = unassigned[0]
+        for value in self.domain[first]:
+            local_assignment = assignment.copy()
+            local_assignment[first] = value
+            if self.consistent(first,local_assignment):
+                #print(local_assignment)
+                #print()
+                result = self.backtracking_search(local_assignment)
+                if result is not None:
+                    return result
+        return None
 
 
 if __name__ == "__main__":
+    letters = list("SENDMORY")
+    possible_digits = {}
+    for letter in letters:
+        possible_digits[letter] = [0,1,2,3,4,5,6,7,8,9]
+    #The greatest possible carry C4 can be 1
+    possible_digits["M"] = [1]
+    csp = CSP(letters,possible_digits)
+    csp.add_constraint(SendMoreMoneyConstrain(letters))
+    solution = csp.backtracking_search()
+    if solution is None:
+        print("No solution found")
+    else:
+        print(solution)
 
-    print(Unify(Rel("Knows",[Constant("John"),Variable("X")]),Rel("Knows",[Variable("Y"),Rel("Mother",[Variable("Y")])]),{}))
-    print()
-    print(Unify(Rel("Knows",[Constant("John"),Variable("X")]),Rel("Knows",[Variable("Y"),Constant("Elizabeth")]),{}))
-    print()
-    print(Unify(Rel("Knows",[Constant("John"),Variable("X")]),Rel("Knows",[Variable("X"),Constant("Elizabeth")]),{}))    
 
-
-#Output:
-#{'John': 'Y', "Mother['Y']": 'X'}
-#{'John': 'Y', 'Elizabeth': 'X'}
-#Ambigious Variable
-#False
+#Output
+#{'S': 9, 'E': 5, 'N': 6, 'D': 7, 'M': 1, 'O': 0, 'R': 8, 'Y': 2}
